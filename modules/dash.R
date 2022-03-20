@@ -19,10 +19,22 @@ dash_UI <- function(id,title) {
         span(title,style="font-size:2.5em;margin-top:10px; font-weight:900;",class="brand")#,
         ),
       fluidRow(column(9,
-                          uiOutput(ns('main'))
+                      tabsetPanel(type = 'tabs',selected = "Charts",
+                                  tabPanel(title = "Charts",icon = icon("chart-area"),
+                                           br(),
+                                          uiOutput(ns('main'))
+                                  ),
+                                  tabPanel(title = "Data",icon = icon("database"),
+                                   br(),
+                                   div(style='background-color:#fff; padding:10px; border-radius:10px;',
+                                       DTOutput(ns('mainDt'))
+                                   )
+                                  )
+                      )
                       ),
                column(3, 
-                      dateRangeInput(inputId = ns('dRange'),label = "Date Range",start = min(yt$trending_date),end = max(yt$trending_date),width = "100%"),
+                      h3("Controls"),hr(),
+                      # dateRangeInput(inputId = ns('dRange'),label = "Date Range",start = min(yt$trending_date),end = max(yt$trending_date),width = "100%"),
                       sliderInput(inputId = ns('range'),'Date',min = min(yt$trending_date),max = max(yt$trending_date),
                                   value = max(yt$trending_date),width = "100%",animate = animationOptions(
                                     interval = 700,
@@ -30,12 +42,10 @@ dash_UI <- function(id,title) {
                                     pauseButton = icon('pause', "fa-2x")
                                   ),step = 7),
                       numericInput(ns("topx"),"Show top",value = 10,min = 0,step = 1,width = "100%"),
-                      plotlyOutput(ns('subp'),height = "550px")
-               )),
-      hr(),
-      div(style='background-color:#fff; padding:10px; border-radius:10px;',
-      DTOutput(ns('mainDt'))
-      )
+                      selectizeInput(ns("chanels"),"Channels",choices = c("All",unique(yt$channel_title)),selected = "All",multiple=T,width="100%"),
+                      hr(),
+                      plotlyOutput(ns('subp'),height = "570px")
+               ))
     
   )
 }
@@ -44,7 +54,14 @@ dash <- function(input, output, session) {
   ns<-session$ns
   
   byChanel<-reactive({
-    yx<-yt%>%
+    yk<-yt
+    
+    if(!"All"%in%input$chanels){
+      yk<-yk%>%
+        filter(channel_title%in%input$chanels)
+    }
+    
+    yx<-yk%>%
       filter(trending_date<=input$range)%>%
       group_by(channel_title)%>%
       summarise(views=sum(views),likes=sum(likes),dislikes=sum(dislikes),comments=sum(comment_count),totalTrendingDates=n())
